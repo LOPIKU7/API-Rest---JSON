@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Tarefas</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+        }
+        form {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        form input, form button {
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        form button:hover {
+            background-color: #0056b3;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-details {
+            flex-grow: 1;
+        }
+        .task-actions button {
+            margin-left: 10px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .task-actions .edit-btn { background-color: #ffc107; color: black; }
+        .task-actions .delete-btn { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Gerenciador de Tarefas</h1>
+    <form id="task-form">
+        <input type="hidden" id="task-id">
+        <input type="text" id="task-name" placeholder="Nome da Tarefa" required>
+        <input type="date" id="task-date" required>
+        <input type="text" id="task-responsible" placeholder="Responsável" required>
+        <button type="submit" id="submit-btn">Adicionar Tarefa</button>
+    </form>
+
+    <ul id="task-list"></ul>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:8080/api/tarefas';
+    const form = document.getElementById('task-form');
+    const taskIdInput = document.getElementById('task-id');
+    const taskNameInput = document.getElementById('task-name');
+    const taskDateInput = document.getElementById('task-date');
+    const taskResponsibleInput = document.getElementById('task-responsible');
+    const submitBtn = document.getElementById('submit-btn');
+    const taskList = document.getElementById('task-list');
+
+    // Função para buscar e exibir as tarefas
+    async function fetchTasks() {
+        const response = await fetch(API_URL);
+        const tasks = await response.json();
+        taskList.innerHTML = '';
+        tasks.forEach(task => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="task-details">
+                    <strong>${task.nome}</strong>
+                    <br> Data de Entrega: ${task.dataEntrega}
+                    <br> Responsável: ${task.responsavel}
+                </div>
+                <div class="task-actions">
+                    <button class="edit-btn" data-id="${task.id}">Editar</button>
+                    <button class="delete-btn" data-id="${task.id}">Excluir</button>
+                </div>
+            `;
+            taskList.appendChild(li);
+        });
+    }
+
+    // Função para adicionar ou atualizar uma tarefa
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = taskIdInput.value;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        const data = {
+            nome: taskNameInput.value,
+            dataEntrega: taskDateInput.value,
+            responsavel: taskResponsibleInput.value
+        };
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            form.reset();
+            taskIdInput.value = '';
+            submitBtn.textContent = 'Adicionar Tarefa';
+            fetchTasks();
+        } else {
+            alert('Erro ao salvar a tarefa.');
+        }
+    });
+
+    // Função para editar ou excluir uma tarefa
+    taskList.addEventListener('click', async (e) => {
+        const target = e.target;
+        const id = target.dataset.id;
+
+        if (target.classList.contains('delete-btn')) {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                fetchTasks();
+            } else {
+                alert('Erro ao excluir a tarefa.');
+            }
+        }
+
+        if (target.classList.contains('edit-btn')) {
+            const response = await fetch(`${API_URL}/${id}`);
+            const task = await response.json();
+
+            taskIdInput.value = task.id;
+            taskNameInput.value = task.nome;
+            taskDateInput.value = task.dataEntrega;
+            taskResponsibleInput.value = task.responsavel;
+            submitBtn.textContent = 'Atualizar Tarefa';
+        }
+    });
+
+    // Carrega as tarefas quando a página é aberta
+    fetchTasks();
+</script>
+
+</body>
+</html>
