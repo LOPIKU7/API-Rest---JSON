@@ -25,26 +25,42 @@ public class JsonTarefaRepository implements TarefaRepository {
     public JsonTarefaRepository() throws IOException {
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-        // ➡️ NOVO DIRETÓRIO: Carrega o arquivo tarefas.json da pasta 'resources' (classpath)
+        // 1. Tenta carregar o arquivo usando o ClassPathResource (melhor para leitura)
         ClassPathResource resource = new ClassPathResource("tarefas.json");
 
-        // Esta linha tenta obter o caminho físico do arquivo.
-        // ATENÇÃO: Isso funciona bem em ambientes de desenvolvimento (IDE),
-        // mas pode falhar se o projeto for empacotado como um JAR executável.
+        // 2. Define o dataFile para o caminho relativo de escrita (para desenvolvimento)
+        File relativeFile = new File("src/main/resources/tarefas.json");
+
+        // Verifica se o recurso existe no classpath (significa que já foi compilado/copiado)
         if (resource.exists()) {
+            // Se já existe e está acessível, usa o arquivo do ClassPathResource
             this.dataFile = resource.getFile();
         } else {
-            // Se o recurso não existir, tenta criá-lo no diretório de execução/recursos,
-            // ou você pode criar o arquivo "tarefas.json" manualmente em src/main/resources
-            // e garantir que ele seja copiado para o classpath.
-            // Para simplicidade na IDE:
-            this.dataFile = new File("src/main/resources/tarefas.json");
+            // Se o arquivo não for encontrado no classpath de execução (ou não existe no projeto):
+
+            // A) Define o caminho do arquivo no diretório de desenvolvimento
+            this.dataFile = relativeFile;
+
+            // B) ⭐️ CRIA O DIRETÓRIO PAI SE NÃO EXISTIR! (CORREÇÃO DE ERRO)
+            File parentDir = this.dataFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                // Tenta criar os diretórios necessários (src/main/resources)
+                if (!parentDir.mkdirs()) {
+                    throw new IOException("Falha ao criar o diretório de recursos: " + parentDir.getAbsolutePath());
+                }
+            }
+
+            // C) ⭐️ CRIA O ARQUIVO SE NÃO EXISTIR
             if (!this.dataFile.exists()) {
-                this.dataFile.createNewFile();
+                if (this.dataFile.createNewFile()) {
+                    System.out.println("Arquivo tarefas.json criado em: " + this.dataFile.getAbsolutePath());
+                } else {
+                    throw new IOException("Falha ao criar o arquivo tarefas.json.");
+                }
             }
         }
 
-        // Verifica se o arquivo existe e não está vazio para carregar dados
+        // 3. Carrega os dados
         if (dataFile.exists() && dataFile.length() > 0) {
             this.tarefas = objectMapper.readValue(dataFile, new TypeReference<List<Tarefa>>() {});
             this.tarefas.stream().mapToLong(Tarefa::getId).max().ifPresent(maxId -> counter.set(maxId));
