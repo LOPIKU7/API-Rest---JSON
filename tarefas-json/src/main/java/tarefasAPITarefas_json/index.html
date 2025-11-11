@@ -76,7 +76,7 @@
         .task-actions .edit-btn { background-color: #ffc107; color: black; }
         .task-actions .delete-btn { background-color: #dc3545; color: white; }
 
-        /* Estilos para a nova área de pesquisa */
+        /* Estilos para a área de pesquisa */
         .search-area {
             display: flex;
             gap: 10px;
@@ -135,8 +135,37 @@
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
 
-    // Função para buscar e exibir as tarefas
-    // Agora aceita uma lista de tarefas filtrada opcionalmente
+
+    // ➡️ FUNÇÃO ADICIONADA: DEFINE O VALOR PADRÃO PARA AMANHÃ
+    function setTomorrowAsDefaultDate() {
+        const today = new Date();
+        // Adiciona 1 dia (86400000 milissegundos) à data atual
+        today.setDate(today.getDate() + 1);
+
+        const year = today.getFullYear();
+        // getMonth() retorna de 0 a 11, por isso adicionamos 1
+        // padStart(2, '0') garante que o mês/dia tenha 2 dígitos (ex: 01, 10)
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+
+        // Formato YYYY-MM-DD exigido pelo input type="date"
+        const tomorrowDate = `${year}-${month}-${day}`;
+
+        // Define o valor do input
+        taskDateInput.value = tomorrowDate;
+    }
+
+
+    // Função para formatar o nome, usando a regra salva no contexto
+    function formatName(name) {
+        if (!name) return '';
+        // Simplesmente capitaliza a primeira letra de cada palavra para se aproximar do formato "Rafaela de Oliveira Bernardino"
+        return name.toLowerCase().split(' ').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+    }
+
+    // Função para renderizar as tarefas na lista
     function renderTasks(tasks) {
         taskList.innerHTML = '';
         if (tasks.length === 0) {
@@ -144,7 +173,6 @@
             return;
         }
         tasks.forEach(task => {
-            // Aplica a formatação de nome salva no contexto (Rafaela de Oliveira Bernardino)
             const formattedResponsible = task.responsavel ? formatName(task.responsavel) : 'Não Informado';
 
             const li = document.createElement('li');
@@ -170,20 +198,10 @@
         renderTasks(tasks);
     }
 
-    // Função para formatar o nome, usando a regra salva no contexto
-    function formatName(name) {
-        if (!name) return '';
-        // Simplesmente capitaliza a primeira letra de cada palavra para se aproximar do formato "Rafaela de Oliveira Bernardino"
-        return name.toLowerCase().split(' ').map(word =>
-            word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
-    }
-
     // Função de Pesquisa
     async function searchTasks() {
         const searchTerm = searchInput.value.trim().toLowerCase();
 
-        // Se o campo de pesquisa estiver vazio, carrega todas as tarefas novamente
         if (searchTerm === '') {
             fetchAndRenderAllTasks();
             return;
@@ -193,10 +211,8 @@
         const allTasks = await response.json();
 
         const filteredTasks = allTasks.filter(task => {
-            // Tenta corresponder por ID (número)
             const matchesId = !isNaN(searchTerm) && task.id.toString() === searchTerm;
 
-            // Tenta corresponder por Nome ou Responsável (texto)
             const matchesText = task.nome.toLowerCase().includes(searchTerm) ||
                                 task.responsavel.toLowerCase().includes(searchTerm);
 
@@ -240,7 +256,8 @@
             form.reset();
             taskIdInput.value = '';
             submitBtn.textContent = 'Adicionar Tarefa';
-            // Após adicionar/atualizar, recarrega a lista completa
+            // ⭐️ Depois de salvar, define a data para amanhã novamente
+            setTomorrowAsDefaultDate();
             fetchAndRenderAllTasks();
         } else {
             alert('Erro ao salvar a tarefa.');
@@ -257,7 +274,6 @@
                 method: 'DELETE'
             });
             if (response.ok) {
-                // Após excluir, recarrega a lista completa
                 fetchAndRenderAllTasks();
             } else {
                 alert('Erro ao excluir a tarefa.');
@@ -276,7 +292,10 @@
         }
     });
 
-    // Carrega as tarefas quando a página é aberta
+    // ⭐️ Chamadas iniciais
+    // 1. Define a data padrão
+    setTomorrowAsDefaultDate();
+    // 2. Carrega as tarefas
     fetchAndRenderAllTasks();
 </script>
 

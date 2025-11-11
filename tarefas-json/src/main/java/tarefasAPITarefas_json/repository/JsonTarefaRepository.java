@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import tarefasAPITarefas_json.model.Tarefa;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
 import java.io.File;
 import java.io.IOException;
@@ -24,10 +25,26 @@ public class JsonTarefaRepository implements TarefaRepository {
     public JsonTarefaRepository() throws IOException {
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-        // Constrói o caminho de forma segura para o Desktop
-        String userHome = System.getProperty("user.home");
-        this.dataFile = new File(userHome + File.separator + "Desktop" + File.separator + "tarefas-data.json");
+        // ➡️ NOVO DIRETÓRIO: Carrega o arquivo tarefas.json da pasta 'resources' (classpath)
+        ClassPathResource resource = new ClassPathResource("tarefas.json");
 
+        // Esta linha tenta obter o caminho físico do arquivo.
+        // ATENÇÃO: Isso funciona bem em ambientes de desenvolvimento (IDE),
+        // mas pode falhar se o projeto for empacotado como um JAR executável.
+        if (resource.exists()) {
+            this.dataFile = resource.getFile();
+        } else {
+            // Se o recurso não existir, tenta criá-lo no diretório de execução/recursos,
+            // ou você pode criar o arquivo "tarefas.json" manualmente em src/main/resources
+            // e garantir que ele seja copiado para o classpath.
+            // Para simplicidade na IDE:
+            this.dataFile = new File("src/main/resources/tarefas.json");
+            if (!this.dataFile.exists()) {
+                this.dataFile.createNewFile();
+            }
+        }
+
+        // Verifica se o arquivo existe e não está vazio para carregar dados
         if (dataFile.exists() && dataFile.length() > 0) {
             this.tarefas = objectMapper.readValue(dataFile, new TypeReference<List<Tarefa>>() {});
             this.tarefas.stream().mapToLong(Tarefa::getId).max().ifPresent(maxId -> counter.set(maxId));
@@ -40,6 +57,7 @@ public class JsonTarefaRepository implements TarefaRepository {
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(dataFile, tarefas);
         } catch (IOException e) {
+            System.err.println("Erro ao salvar dados no arquivo JSON: " + dataFile.getAbsolutePath());
             e.printStackTrace();
         }
     }
