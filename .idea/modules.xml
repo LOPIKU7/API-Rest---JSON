@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/tarefas-json.iml" filepath="$PROJECT_DIR$/.idea/tarefas-json.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tarefas-json/tarefas-json.iml" filepath="$PROJECT_DIR$/tarefas-json/tarefas-json.iml" />
     </modules>
   </component>
 </project>
